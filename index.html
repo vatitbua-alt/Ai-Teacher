@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Teacher Assistant — ผู้ช่วยครูอัจฉริยะ</title>
+    <meta name="description" content="AI ผู้ช่วยครูอัจฉริยะ สร้างแผนการสอน สื่อการสอน เกม แบบทดสอบ และโครงสร้างหลักสูตร ด้วย Google Gemini AI">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== API KEY MODAL ===== -->
+<div id="apiModal" class="modal-overlay active">
+    <div class="modal-box">
+        <div class="modal-badge">AI Teacher Assistant</div>
+        <div class="modal-icon-wrap">
+            <div class="modal-icon">🎓</div>
+        </div>
+        <h2>ยินดีต้อนรับ คุณครู!</h2>
+        <p>ผู้ช่วยครู AI อัจฉริยะ — สร้างสิ่งที่คุณต้องการได้ในไม่กี่วินาที</p>
+        <div class="api-input-wrap">
+            <label>Google Gemini API Key</label>
+            <div class="api-input-row">
+                <input type="password" id="apiKeyInput" placeholder="AIzaSy..." autocomplete="off">
+                <button id="toggleApiKey" class="toggle-vis-btn" onclick="toggleApiKeyVisibility()">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
+            <a class="get-key-link" href="https://aistudio.google.com/app/apikey" target="_blank">
+                <i class="fas fa-external-link-alt"></i> รับ API Key ฟรีที่ Google AI Studio
+            </a>
+        </div>
+        <div class="api-input-wrap">
+            <label>ชื่อครู (ไม่บังคับ)</label>
+            <input type="text" id="teacherNameInput" placeholder="เช่น ครูสมชาย, อ.วิภา">
+        </div>
+        <button id="saveApiKey" class="btn-modal-primary" onclick="saveSettings()">
+            <i class="fas fa-rocket"></i> เริ่มใช้งาน
+        </button>
+        <p class="modal-note"><i class="fas fa-shield-alt"></i> API Key เก็บไว้ในเครื่องของคุณเท่านั้น ไม่ส่งไปที่เซิร์ฟเวอร์ใด</p>
+    </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div id="toast" class="toast">
+    <i id="toastIcon" class="fas fa-check-circle"></i>
+    <span id="toastMsg"></span>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div class="app-container" id="appContainer">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <div class="logo-glow">🎓</div>
+                <div class="logo-text-wrap">
+                    <span class="logo-title">AI Teacher</span>
+                    <span class="logo-sub">ผู้ช่วยครูอัจฉริยะ</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-teacher" id="sidebarTeacher">
+            <div class="teacher-avatar">👩‍🏫</div>
+            <div class="teacher-info">
+                <span class="teacher-name" id="sidebarTeacherName">คุณครู</span>
+                <span class="teacher-sub">ยินดีต้อนรับ</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section-label">เมนูหลัก</div>
+            <a href="#" class="nav-item active" data-panel="dashboard" onclick="switchPanel('dashboard', this)">
+                <div class="nav-icon-wrap"><i class="fas fa-home"></i></div>
+                <span>หน้าหลัก</span>
+            </a>
+            <div class="nav-section-label">สร้างเนื้อหา</div>
+            <a href="#" class="nav-item" data-panel="lessonPlan" onclick="switchPanel('lessonPlan', this)">
+                <div class="nav-icon-wrap"><i class="fas fa-clipboard-list"></i></div>
+                <span>แผนการสอน</span>
+                <span class="nav-badge">ยอดนิยม</span>
+            </a>
+            <a href="#" class="nav-item" data-panel="curriculum" onclick="switchPanel('curriculum', this)">
+                <div class="nav-icon-wrap"><i class="fas fa-sitemap"></i></div>
+                <span>โครงสร้างหลักสูตร</span>
+            </a>
+            <a href="#" class="nav-item" data-panel="flowchart" onclick="switchPanel('flowchart', this)">
+                <div class="nav-icon-wrap"><i class="fas fa-project-diagram"></i></div>
+                <span>ผังการสอน</span>
+            </a>
+            <a href="#" class="nav-item" data-panel="materials" onclick="switchPanel('materials', this)">
+                <div class="nav-icon-wrap"><i class="fas fa-book-open"></i></div>
+                <span>สื่อการสอน</span>
+            </a>
+            <a href="#" class="nav-item" data-panel="games" onclick="switchPanel('games', this)">
+                <div class="nav-icon-wrap"><i class="fas fa-gamepad"></i></div>
+                <span>เกมการสอน</span>
+            </a>
+            <a href="#" class="nav-item" data-panel="assessment" onclick="switchPanel('assessment', this)">
+                <div class="nav-icon-wrap"><i class="fas fa-file-alt"></i></div>
+                <span>แบบทดสอบ</span>
+            </a>
+            <div class="nav-section-label">AI Assistant</div>
+            <a href="#" class="nav-item" data-panel="chat" onclick="switchPanel('chat', this)">
+                <div class="nav-icon-wrap"><i class="fas fa-comments"></i></div>
+                <span>ปรึกษา AI</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="api-status-bar" id="apiStatusBar">
+                <div class="status-dot connected" id="statusDot"></div>
+                <span id="statusText">เชื่อมต่อแล้ว</span>
+            </div>
+            <button class="sidebar-settings-btn" onclick="openSettings()">
+                <i class="fas fa-cog"></i> ตั้งค่า API Key
+            </button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content" id="mainContent">
+
+        <!-- ==================== DASHBOARD ==================== -->
+        <div id="panel-dashboard" class="panel active">
+            <div class="panel-header gradient-header">
+                <div class="header-content">
+                    <h1 id="welcomeMsg">สวัสดี คุณครู! 👋</h1>
+                    <p class="header-sub">AI พร้อมช่วยสร้างทุกอย่างที่คุณต้องการสำหรับการสอน</p>
+                </div>
+                <div class="header-art">🎓</div>
+            </div>
+
+            <div class="stats-row">
+                <div class="stat-card" style="--accent: #7C3AED">
+                    <div class="stat-emoji">📋</div>
+                    <div class="stat-content">
+                        <span class="stat-num" id="stat-plans">0</span>
+                        <span class="stat-label">แผนการสอน</span>
+                    </div>
+                    <div class="stat-bg-icon">📋</div>
+                </div>
+                <div class="stat-card" style="--accent: #0EA5E9">
+                    <div class="stat-emoji">📚</div>
+                    <div class="stat-content">
+                        <span class="stat-num" id="stat-materials">0</span>
+                        <span class="stat-label">สื่อการสอน</span>
+                    </div>
+                    <div class="stat-bg-icon">📚</div>
+                </div>
+                <div class="stat-card" style="--accent: #F59E0B">
+                    <div class="stat-emoji">🎮</div>
+                    <div class="stat-content">
+                        <span class="stat-num" id="stat-games">0</span>
+                        <span class="stat-label">เกมการสอน</span>
+                    </div>
+                    <div class="stat-bg-icon">🎮</div>
+                </div>
+                <div class="stat-card" style="--accent: #10B981">
+                    <div class="stat-emoji">📝</div>
+                    <div class="stat-content">
+                        <span class="stat-num" id="stat-tests">0</span>
+                        <span class="stat-label">แบบทดสอบ</span>
+                    </div>
+                    <div class="stat-bg-icon">📝</div>
+                </div>
+            </div>
+
+            <div class="section-title"><i class="fas fa-toolbox"></i> เครื่องมือสำหรับครู</div>
+            <div class="tool-grid">
+                <div class="tool-card" onclick="switchPanel('lessonPlan')">
+                    <div class="tool-card-header" style="background: linear-gradient(135deg, #7C3AED22, #A855F722)">
+                        <span class="tool-emoji">📋</span>
+                        <span class="tool-hot-badge">🔥 ยอดนิยม</span>
+                    </div>
+                    <div class="tool-card-body">
+                        <h3>แผนการสอน</h3>
+                        <p>สร้างแผนการสอนมาตรฐานครบองค์ประกอบ พร้อมจุดประสงค์ กิจกรรม สื่อ และการวัดผล</p>
+                    </div>
+                </div>
+                <div class="tool-card" onclick="switchPanel('curriculum')">
+                    <div class="tool-card-header" style="background: linear-gradient(135deg, #0EA5E922, #38BDF822)">
+                        <span class="tool-emoji">🗺️</span>
+                    </div>
+                    <div class="tool-card-body">
+                        <h3>โครงสร้างหลักสูตร</h3>
+                        <p>วางแผนการสอนตลอดภาคเรียน แบ่งหน่วยการเรียนรู้และ Timeline</p>
+                    </div>
+                </div>
+                <div class="tool-card" onclick="switchPanel('flowchart')">
+                    <div class="tool-card-header" style="background: linear-gradient(135deg, #6366F122, #818CF822)">
+                        <span class="tool-emoji">📐</span>
+                    </div>
+                    <div class="tool-card-body">
+                        <h3>ผังการสอน</h3>
+                        <p>สร้างแผนผังขั้นตอนการสอน Flow Chart และโครงร่างบทเรียน</p>
+                    </div>
+                </div>
+                <div class="tool-card" onclick="switchPanel('materials')">
+                    <div class="tool-card-header" style="background: linear-gradient(135deg, #F59E0B22, #FCD34D22)">
+                        <span class="tool-emoji">📚</span>
+                    </div>
+                    <div class="tool-card-body">
+                        <h3>สื่อการสอน</h3>
+                        <p>ใบงาน ใบความรู้ บทสรุป Slide Outline Mind Map Infographic และ Rubric</p>
+                    </div>
+                </div>
+                <div class="tool-card" onclick="switchPanel('games')">
+                    <div class="tool-card-header" style="background: linear-gradient(135deg, #EC489922, #F4716122)">
+                        <span class="tool-emoji">🎮</span>
+                    </div>
+                    <div class="tool-card-body">
+                        <h3>เกมการสอน</h3>
+                        <p>Quiz, จับคู่, ปริศนาอักษรไขว้, บิงโก, Role Play ทำให้เรียนสนุก</p>
+                    </div>
+                </div>
+                <div class="tool-card" onclick="switchPanel('assessment')">
+                    <div class="tool-card-header" style="background: linear-gradient(135deg, #10B98122, #34D39922)">
+                        <span class="tool-emoji">📝</span>
+                    </div>
+                    <div class="tool-card-body">
+                        <h3>แบบทดสอบ</h3>
+                        <p>ปรนัย อัตนัย เติมคำ จับคู่ ถูก/ผิด ครบรูปแบบพร้อมเฉลย</p>
+                    </div>
+                </div>
+                <div class="tool-card" onclick="switchPanel('chat')" style="grid-column: span 1;">
+                    <div class="tool-card-header" style="background: linear-gradient(135deg, #8B5CF622, #A78BFA22)">
+                        <span class="tool-emoji">💬</span>
+                    </div>
+                    <div class="tool-card-body">
+                        <h3>ปรึกษา AI</h3>
+                        <p>ถามตอบแบบ Real-time เรื่องเทคนิคการสอน เนื้อหา หรือแนวทางการจัดการชั้นเรียน</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== LESSON PLAN ==================== -->
+        <div id="panel-lessonPlan" class="panel">
+            <div class="panel-header">
+                <div>
+                    <h1>📋 สร้างแผนการสอน</h1>
+                    <p class="header-sub">AI สร้างแผนการสอนมาตรฐานหลักสูตรแกนกลาง 2551 (ฉบับปรับปรุง 2560)</p>
+                </div>
+            </div>
+            <div class="two-col-layout">
+                <div class="form-col">
+                    <div class="form-card">
+                        <div class="form-card-title"><i class="fas fa-pen-to-square"></i> ข้อมูลการสอน</div>
+                        <div class="form-group">
+                            <label>วิชา <span class="required">*</span></label>
+                            <input type="text" id="lp-subject" placeholder="เช่น คณิตศาสตร์, วิทยาศาสตร์, ภาษาไทย">
+                        </div>
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label>ระดับชั้น <span class="required">*</span></label>
+                                <select id="lp-level">
+                                    <option value="">— เลือกระดับชั้น —</option>
+                                    <optgroup label="อนุบาล">
+                                        <option>อนุบาล 1</option><option>อนุบาล 2</option><option>อนุบาล 3</option>
+                                    </optgroup>
+                                    <optgroup label="ประถมศึกษา">
+                                        <option>ประถมศึกษาปีที่ 1</option><option>ประถมศึกษาปีที่ 2</option>
+                                        <option>ประถมศึกษาปีที่ 3</option><option>ประถมศึกษาปีที่ 4</option>
+                                        <option>ประถมศึกษาปีที่ 5</option><option>ประถมศึกษาปีที่ 6</option>
+                                    </optgroup>
+                                    <optgroup label="มัธยมศึกษาตอนต้น">
+                                        <option>มัธยมศึกษาปีที่ 1</option><option>มัธยมศึกษาปีที่ 2</option><option>มัธยมศึกษาปีที่ 3</option>
+                                    </optgroup>
+                                    <optgroup label="มัธยมศึกษาตอนปลาย">
+                                        <option>มัธยมศึกษาปีที่ 4</option><option>มัธยมศึกษาปีที่ 5</option><option>มัธยมศึกษาปีที่ 6</option>
+                                    </optgroup>
+                                    <optgroup label="อาชีวศึกษา">
+                                        <option>ปวช.1</option><option>ปวช.2</option><option>ปวช.3</option>
+                                        <option>ปวส.1</option><option>ปวส.2</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>เวลาเรียน</label>
+                                <select id="lp-duration">
+                                    <option value="50">1 คาบ (50 นาที)</option>
+                                    <option value="100">2 คาบ (100 นาที)</option>
+                                    <option value="150">3 คาบ (150 นาที)</option>
+                                    <option value="200">4 คาบ (200 นาที)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>หัวข้อ / เรื่องที่สอน <span class="required">*</span></label>
+                            <input type="text" id="lp-topic" placeholder="เช่น การบวกจำนวนเต็ม, ระบบสุริยะ, คำนาม">
+                        </div>
+                        <div class="form-group">
+                            <label>หน่วยการเรียนรู้</label>
+                            <input type="text" id="lp-unit" placeholder="เช่น หน่วยที่ 1: ตัวเลขและการดำเนินการ">
+                        </div>
+                        <div class="form-group">
+                            <label>รูปแบบการสอน</label>
+                            <div class="checkbox-grid">
+                                <label class="cb-item"><input type="checkbox" value="Active Learning" checked> Active Learning</label>
+                                <label class="cb-item"><input type="checkbox" value="บูรณาการข้ามวิชา"> บูรณาการ</label>
+                                <label class="cb-item"><input type="checkbox" value="Project-Based Learning"> Project Based</label>
+                                <label class="cb-item"><input type="checkbox" value="Inquiry-Based Learning"> Inquiry Based</label>
+                                <label class="cb-item"><input type="checkbox" value="Cooperative Learning"> Cooperative</label>
+                                <label class="cb-item"><input type="checkbox" value="STEM"> STEM</label>
+                                <label class="cb-item"><input type="checkbox" value="Gamification"> Gamification</label>
+                                <label class="cb-item"><input type="checkbox" value="Flipped Classroom"> Flipped Class</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>รายละเอียดเพิ่มเติม / จุดเน้นพิเศษ</label>
+                            <textarea id="lp-notes" rows="3" placeholder="เช่น เน้น hands-on activity, มีนักเรียนที่มีความต้องการพิเศษ, ต้องการเชื่อมโยงกับชีวิตประจำวัน..."></textarea>
+                        </div>
+                        <button class="btn-generate" onclick="generateLessonPlan()">
+                            <i class="fas fa-wand-magic-sparkles"></i> สร้างแผนการสอน
+                        </button>
+                    </div>
+                </div>
+                <div class="output-col">
+                    <div class="output-header">
+                        <span>ผลลัพธ์</span>
+                        <div class="output-actions" id="lp-actions" style="display:none">
+                            <button class="btn-act" onclick="printOutput('lp-result')"><i class="fas fa-print"></i> พิมพ์</button>
+                            <button class="btn-act" onclick="copyOutput('lp-result')"><i class="fas fa-copy"></i> คัดลอก</button>
+                        </div>
+                    </div>
+                    <div class="output-box" id="lp-result">
+                        <div class="empty-state">
+                            <div class="empty-icon">📋</div>
+                            <p>กรอกข้อมูลและกด "สร้างแผนการสอน"</p>
+                            <p class="empty-sub">AI จะสร้างแผนการสอนมาตรฐานให้ทันที</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== CURRICULUM ==================== -->
+        <div id="panel-curriculum" class="panel">
+            <div class="panel-header">
+                <div>
+                    <h1>🗺️ โครงสร้างหลักสูตร</h1>
+                    <p class="header-sub">วางแผนการสอนตลอดภาคเรียนด้วย AI พร้อม Timeline สัปดาห์</p>
+                </div>
+            </div>
+            <div class="two-col-layout">
+                <div class="form-col">
+                    <div class="form-card">
+                        <div class="form-card-title"><i class="fas fa-sitemap"></i> ข้อมูลหลักสูตร</div>
+                        <div class="form-group">
+                            <label>วิชา <span class="required">*</span></label>
+                            <input type="text" id="cur-subject" placeholder="เช่น คณิตศาสตร์ ม.2, วิทยาศาสตร์ ป.5">
+                        </div>
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label>ระดับชั้น</label>
+                                <select id="cur-level">
+                                    <option>ป.1</option><option>ป.2</option><option>ป.3</option>
+                                    <option>ป.4</option><option>ป.5</option><option>ป.6</option>
+                                    <option>ม.1</option><option selected>ม.2</option><option>ม.3</option>
+                                    <option>ม.4</option><option>ม.5</option><option>ม.6</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>ภาคเรียน</label>
+                                <select id="cur-semester">
+                                    <option value="1">ภาคเรียนที่ 1</option>
+                                    <option value="2">ภาคเรียนที่ 2</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label>จำนวนสัปดาห์</label>
+                                <select id="cur-weeks">
+                                    <option value="16">16 สัปดาห์</option>
+                                    <option value="18" selected>18 สัปดาห์</option>
+                                    <option value="20">20 สัปดาห์</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>คาบ/สัปดาห์</label>
+                                <select id="cur-periods">
+                                    <option value="2">2 คาบ</option>
+                                    <option value="3" selected>3 คาบ</option>
+                                    <option value="4">4 คาบ</option>
+                                    <option value="5">5 คาบ</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>มาตรฐาน/ตัวชี้วัดหลัก (ถ้ามี)</label>
+                            <textarea id="cur-standards" rows="3" placeholder="เช่น ค 1.1, ค 1.2, ค 2.1 ม.2/1-3..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>เป้าหมายการสอนพิเศษ</label>
+                            <textarea id="cur-goals" rows="2" placeholder="เช่น เตรียมสอบ O-NET, พัฒนาทักษะการคิดวิเคราะห์..."></textarea>
+                        </div>
+                        <button class="btn-generate" onclick="generateCurriculum()">
+                            <i class="fas fa-sitemap"></i> สร้างโครงสร้างหลักสูตร
+                        </button>
+                    </div>
+                </div>
+                <div class="output-col">
+                    <div class="output-header">
+                        <span>ผลลัพธ์</span>
+                        <div class="output-actions" id="cur-actions" style="display:none">
+                            <button class="btn-act" onclick="printOutput('cur-result')"><i class="fas fa-print"></i> พิมพ์</button>
+                            <button class="btn-act" onclick="copyOutput('cur-result')"><i class="fas fa-copy"></i> คัดลอก</button>
+                        </div>
+                    </div>
+                    <div class="output-box" id="cur-result">
+                        <div class="empty-state">
+                            <div class="empty-icon">🗺️</div>
+                            <p>กรอกข้อมูลและกด "สร้างโครงสร้างหลักสูตร"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== FLOWCHART ==================== -->
+        <div id="panel-flowchart" class="panel">
+            <div class="panel-header">
+                <div>
+                    <h1>📐 ผังการสอน</h1>
+                    <p class="header-sub">สร้างแผนผังขั้นตอนการสอน Flow Chart และโครงร่างบทเรียน</p>
+                </div>
+            </div>
+            <div class="two-col-layout">
+                <div class="form-col">
+                    <div class="form-card">
+                        <div class="form-card-title"><i class="fas fa-project-diagram"></i> ข้อมูลผังการสอน</div>
+                        <div class="form-group">
+                            <label>วิชา / หัวข้อ <span class="required">*</span></label>
+                            <input type="text" id="flow-topic" placeholder="เช่น วิทยาศาสตร์ เรื่อง ระบบนิเวศ">
+                        </div>
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label>ระดับชั้น</label>
+                                <select id="flow-level">
+                                    <option>ป.1-3</option><option>ป.4-6</option>
+                                    <option selected>ม.1-3</option><option>ม.4-6</option><option>อาชีวศึกษา</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>จำนวนคาบรวม</label>
+                                <select id="flow-periods">
+                                    <option>1 คาบ</option><option>2 คาบ</option>
+                                    <option>3 คาบ</option><option selected>5 คาบ</option>
+                                    <option>10 คาบ</option><option>15 คาบ</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>ประเภทผัง</label>
+                            <div class="chip-group" id="flowTypeGroup">
+                                <div class="chip active" onclick="selectChip(this, 'flowTypeGroup')">Flow Chart การสอน</div>
+                                <div class="chip" onclick="selectChip(this, 'flowTypeGroup')">ผังหน่วยการเรียนรู้</div>
+                                <div class="chip" onclick="selectChip(this, 'flowTypeGroup')">Mind Map บทเรียน</div>
+                                <div class="chip" onclick="selectChip(this, 'flowTypeGroup')">Concept Map</div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>จุดประสงค์หลัก</label>
+                            <textarea id="flow-objectives" rows="3" placeholder="สิ่งที่ต้องการให้นักเรียนรู้หรือทำได้..."></textarea>
+                        </div>
+                        <button class="btn-generate" onclick="generateFlowchart()">
+                            <i class="fas fa-project-diagram"></i> สร้างผังการสอน
+                        </button>
+                    </div>
+                </div>
+                <div class="output-col">
+                    <div class="output-header">
+                        <span>ผลลัพธ์</span>
+                        <div class="output-actions" id="flow-actions" style="display:none">
+                            <button class="btn-act" onclick="printOutput('flow-result')"><i class="fas fa-print"></i> พิมพ์</button>
+                            <button class="btn-act" onclick="copyOutput('flow-result')"><i class="fas fa-copy"></i> คัดลอก</button>
+                        </div>
+                    </div>
+                    <div class="output-box" id="flow-result">
+                        <div class="empty-state">
+                            <div class="empty-icon">📐</div>
+                            <p>กรอกข้อมูลและกด "สร้างผังการสอน"</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== MATERIALS ==================== -->
+        <div id="panel-materials" class="panel">
+            <div class="panel-header">
+                <div>
+                    <h1>📚 สร้างสื่อการสอน</h1>
+                    <p class="header-sub">AI สร้างสื่อการสอนหลากหลายรูปแบบพร้อมพิมพ์</p>
+                </div>
+            </div>
+            <div class="two-col-layout">
+                <div class="form-col">
+                    <div class="form-card">
+                        <div class="form-card-title"><i class="fas fa-palette"></i> เลือกประเภทสื่อ</div>
+                        <div class="material-type-grid" id="matTypeGrid">
+                            <div class="mat-type active" data-type="worksheet" onclick="selectMatType(this)">
+                                <span class="mat-emoji">📄</span><span>ใบงาน</span>
+                            </div>
+                            <div class="mat-type" data-type="handout" onclick="selectMatType(this)">
+                                <span class="mat-emoji">📜</span><span>ใบความรู้</span>
+                            </div>
+                            <div class="mat-type" data-type="summary" onclick="selectMatType(this)">
+                                <span class="mat-emoji">📝</span><span>บทสรุป</span>
+                            </div>
+                            <div class="mat-type" data-type="exercise" onclick="selectMatType(this)">
+                                <span class="mat-emoji">✏️</span><span>แบบฝึกหัด</span>
+                            </div>
+                            <div class="mat-type" data-type="slides" onclick="selectMatType(this)">
+                                <span class="mat-emoji">🖥️</span><span>Slide Outline</span>
+                            </div>
+                            <div class="mat-type" data-type="mindmap" onclick="selectMatType(this)">
+                                <span class="mat-emoji">🧠</span><span>Mind Map</span>
+                            </div>
+                            <div class="mat-type" data-type="infographic" onclick="selectMatType(this)">
+                                <span class="mat-emoji">📊</span><span>Infographic</span>
+                            </div>
+                            <div class="mat-type" data-type="rubric" onclick="selectMatType(this)">
+                                <span class="mat-emoji">📏</span><span>Rubric</span>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top:20px">
+                            <label>วิชา / หัวข้อ <span class="required">*</span></label>
+                            <input type="text" id="mat-topic" placeholder="เช่น วิทยาศาสตร์ เรื่อง การสังเคราะห์แสง ม.2">
+                        </div>
+                        <div class="form-group">
+                            <label>ระดับชั้น</label>
+                            <select id="mat-level">
+                                <option>อนุบาล</option>
+                                <option>ประถมศึกษาตอนต้น (ป.1-3)</option>
+                                <option>ประถมศึกษาตอนปลาย (ป.4-6)</option>
+                                <option selected>มัธยมศึกษาตอนต้น (ม.1-3)</option>
+                                <option>มัธยมศึกษาตอนปลาย (ม.4-6)</option>
+                                <option>อาชีวศึกษา</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>รายละเอียดเพิ่มเติม</label>
+                            <textarea id="mat-details" rows="3" placeholder="เนื้อหาที่ต้องการเน้น, จำนวนข้อ, ระดับความยาก, รูปแบบพิเศษ..."></textarea>
+                        </div>
+                        <button class="btn-generate" onclick="generateMaterial()">
+                            <i class="fas fa-wand-magic-sparkles"></i> สร้างสื่อการสอน
+                        </button>
+                    </div>
+                </div>
+                <div class="output-col">
+                    <div class="output-header">
+                        <span>ผลลัพธ์</span>
+                        <div class="output-actions" id="mat-actions" style="display:none">
+                            <button class="btn-act" onclick="printOutput('mat-result')"><i class="fas fa-print"></i> พิมพ์</button>
+                            <button class="btn-act" onclick="copyOutput('mat-result')"><i class="fas fa-copy"></i> คัดลอก</button>
+                        </div>
+                    </div>
+                    <div class="output-box" id="mat-result">
+                        <div class="empty-state">
+                            <div class="empty-icon">📚</div>
+                            <p>เลือกประเภทสื่อและกรอกข้อมูล</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== GAMES ==================== -->
+        <div id="panel-games" class="panel">
+            <div class="panel-header">
+                <div>
+                    <h1>🎮 เกมการสอน</h1>
+                    <p class="header-sub">ทำให้ห้องเรียนสนุกด้วยเกมที่ AI สร้างเฉพาะสำหรับเนื้อหาของคุณ</p>
+                </div>
+            </div>
+            <div class="two-col-layout">
+                <div class="form-col">
+                    <div class="form-card">
+                        <div class="form-card-title"><i class="fas fa-gamepad"></i> เลือกประเภทเกม</div>
+                        <div class="game-type-grid" id="gameTypeGrid">
+                            <div class="game-type active" data-type="quiz" onclick="selectGameType(this)">
+                                <span class="game-emoji">❓</span><span>Quiz แข่งขัน</span>
+                            </div>
+                            <div class="game-type" data-type="matching" onclick="selectGameType(this)">
+                                <span class="game-emoji">🔗</span><span>จับคู่</span>
+                            </div>
+                            <div class="game-type" data-type="wordsearch" onclick="selectGameType(this)">
+                                <span class="game-emoji">🔤</span><span>ค้นหาคำ</span>
+                            </div>
+                            <div class="game-type" data-type="bingo" onclick="selectGameType(this)">
+                                <span class="game-emoji">🎱</span><span>บิงโก</span>
+                            </div>
+                            <div class="game-type" data-type="crossword" onclick="selectGameType(this)">
+                                <span class="game-emoji">✏️</span><span>อักษรไขว้</span>
+                            </div>
+                            <div class="game-type" data-type="roleplay" onclick="selectGameType(this)">
+                                <span class="game-emoji">🎭</span><span>Role Play</span>
+                            </div>
+                            <div class="game-type" data-type="sorting" onclick="selectGameType(this)">
+                                <span class="game-emoji">🔢</span><span>เรียงลำดับ</span>
+                            </div>
+                            <div class="game-type" data-type="scenario" onclick="selectGameType(this)">
+                                <span class="game-emoji">🌟</span><span>Escape Room</span>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top:20px">
+                            <label>วิชา / หัวข้อ <span class="required">*</span></label>
+                            <input type="text" id="game-topic" placeholder="เช่น คำนาม ม.1, สมการ ป.6, ระบบร่างกาย">
+                        </div>
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label>ระดับชั้น</label>
+                                <select id="game-level">
+                                    <option>ประถมต้น</option>
+                                    <option>ประถมปลาย</option>
+                                    <option selected>มัธยมต้น</option>
+                                    <option>มัธยมปลาย</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>จำนวนข้อ/ชุด</label>
+                                <select id="game-count">
+                                    <option>5</option><option>8</option>
+                                    <option selected>10</option><option>12</option>
+                                    <option>15</option><option>20</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>รายละเอียดเพิ่มเติม</label>
+                            <textarea id="game-details" rows="2" placeholder="เน้นเนื้อหาส่วนไหน? สำหรับกลุ่มใหญ่/เล็ก? มีรางวัล?..."></textarea>
+                        </div>
+                        <button class="btn-generate" onclick="generateGame()">
+                            <i class="fas fa-play"></i> สร้างเกม
+                        </button>
+                    </div>
+                </div>
+                <div class="output-col">
+                    <div class="output-header">
+                        <span>ผลลัพธ์</span>
+                        <div class="output-actions" id="game-actions" style="display:none">
+                            <button class="btn-act" onclick="printOutput('game-result')"><i class="fas fa-print"></i> พิมพ์</button>
+                            <button class="btn-act" onclick="copyOutput('game-result')"><i class="fas fa-copy"></i> คัดลอก</button>
+                        </div>
+                    </div>
+                    <div class="output-box" id="game-result">
+                        <div class="empty-state">
+                            <div class="empty-icon">🎮</div>
+                            <p>เลือกประเภทเกมและกรอกข้อมูล</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== ASSESSMENT ==================== -->
+        <div id="panel-assessment" class="panel">
+            <div class="panel-header">
+                <div>
+                    <h1>📝 สร้างแบบทดสอบ</h1>
+                    <p class="header-sub">AI สร้างข้อสอบหลายรูปแบบพร้อมเฉลยและเกณฑ์การให้คะแนน</p>
+                </div>
+            </div>
+            <div class="two-col-layout">
+                <div class="form-col">
+                    <div class="form-card">
+                        <div class="form-card-title"><i class="fas fa-list-check"></i> รูปแบบข้อสอบ</div>
+                        <div class="assess-type-list">
+                            <label class="assess-type-item">
+                                <input type="checkbox" value="ปรนัย 4 ตัวเลือก" checked>
+                                <span class="assess-icon">①</span>
+                                <span>ปรนัย (4 ตัวเลือก)</span>
+                            </label>
+                            <label class="assess-type-item">
+                                <input type="checkbox" value="ถูกหรือผิด">
+                                <span class="assess-icon">✓✗</span>
+                                <span>ถูก / ผิด</span>
+                            </label>
+                            <label class="assess-type-item">
+                                <input type="checkbox" value="เติมคำในช่องว่าง">
+                                <span class="assess-icon">___</span>
+                                <span>เติมคำในช่องว่าง</span>
+                            </label>
+                            <label class="assess-type-item">
+                                <input type="checkbox" value="จับคู่">
+                                <span class="assess-icon">↔</span>
+                                <span>จับคู่</span>
+                            </label>
+                            <label class="assess-type-item">
+                                <input type="checkbox" value="ตอบสั้น">
+                                <span class="assess-icon">💬</span>
+                                <span>ตอบสั้น</span>
+                            </label>
+                            <label class="assess-type-item">
+                                <input type="checkbox" value="อัตนัย">
+                                <span class="assess-icon">📜</span>
+                                <span>อัตนัย</span>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>วิชา / หัวข้อ <span class="required">*</span></label>
+                            <input type="text" id="ass-topic" placeholder="เช่น วิทยาศาสตร์ เรื่อง ระบบนิเวศ ม.3">
+                        </div>
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label>ระดับชั้น</label>
+                                <select id="ass-level">
+                                    <option>ป.1-3</option><option>ป.4-6</option>
+                                    <option selected>ม.1-3</option><option>ม.4-6</option>
+                                    <option>อาชีวศึกษา</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>จำนวนข้อรวม</label>
+                                <select id="ass-count">
+                                    <option>10</option><option selected>20</option>
+                                    <option>30</option><option>40</option><option>50</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>ระดับความยาก</label>
+                            <div class="diff-group" id="diffGroup">
+                                <button class="diff-btn active" onclick="selectDiff(this)">ง่าย</button>
+                                <button class="diff-btn" onclick="selectDiff(this)">ปานกลาง</button>
+                                <button class="diff-btn" onclick="selectDiff(this)">ยาก</button>
+                                <button class="diff-btn" onclick="selectDiff(this)">ผสมทุกระดับ</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>เนื้อหาที่เน้น (ไม่บังคับ)</label>
+                            <textarea id="ass-focus" rows="2" placeholder="เช่น เน้นเรื่องห่วงโซ่อาหาร, การหมุนเวียนของสาร..."></textarea>
+                        </div>
+                        <label class="switch-wrap">
+                            <input type="checkbox" id="ass-answer" checked>
+                            <span class="switch-label">แสดงเฉลยและอธิบายคำตอบ</span>
+                        </label>
+                        <button class="btn-generate" onclick="generateAssessment()">
+                            <i class="fas fa-file-circle-check"></i> สร้างแบบทดสอบ
+                        </button>
+                    </div>
+                </div>
+                <div class="output-col">
+                    <div class="output-header">
+                        <span>ผลลัพธ์</span>
+                        <div class="output-actions" id="ass-actions" style="display:none">
+                            <button class="btn-act" onclick="printOutput('ass-result')"><i class="fas fa-print"></i> พิมพ์</button>
+                            <button class="btn-act" onclick="copyOutput('ass-result')"><i class="fas fa-copy"></i> คัดลอก</button>
+                        </div>
+                    </div>
+                    <div class="output-box" id="ass-result">
+                        <div class="empty-state">
+                            <div class="empty-icon">📝</div>
+                            <p>เลือกรูปแบบข้อสอบและกรอกข้อมูล</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== CHAT ==================== -->
+        <div id="panel-chat" class="panel">
+            <div class="panel-header">
+                <div>
+                    <h1>💬 ปรึกษา AI อาจารย์</h1>
+                    <p class="header-sub">ถามอะไรก็ได้เกี่ยวกับการสอน เนื้อหา เทคนิค หรือการจัดการชั้นเรียน</p>
+                </div>
+                <button class="btn-clear-chat" onclick="clearChat()"><i class="fas fa-trash"></i> ล้างประวัติ</button>
+            </div>
+            <div class="chat-wrap">
+                <div class="chat-suggestions-bar">
+                    <span class="sug-label">💡</span>
+                    <div class="suggestions-scroll">
+                        <button class="sug-btn" onclick="useSuggestion(this)">วิธีจัดการห้องเรียนที่มีนักเรียนหลายระดับ</button>
+                        <button class="sug-btn" onclick="useSuggestion(this)">เทคนิค Gamification สำหรับชั้นเรียน</button>
+                        <button class="sug-btn" onclick="useSuggestion(this)">กิจกรรม Ice Breaker ที่น่าสนใจ</button>
+                        <button class="sug-btn" onclick="useSuggestion(this)">วิธีสอนนักเรียนให้อ่านเข้าใจ</button>
+                        <button class="sug-btn" onclick="useSuggestion(this)">เทคนิคการถามคำถามเพื่อกระตุ้นการคิด</button>
+                        <button class="sug-btn" onclick="useSuggestion(this)">วิธีให้ Feedback ที่มีประสิทธิภาพ</button>
+                    </div>
+                </div>
+                <div class="chat-messages-area" id="chatMessages">
+                    <div class="chat-msg ai-msg">
+                        <div class="msg-avatar">🤖</div>
+                        <div class="msg-bubble">
+                            <p><strong>สวัสดีครับ! ผมคือ AI ผู้ช่วยครูอัจฉริยะ 🎓</strong></p>
+                            <p>พร้อมให้คำปรึกษาทุกอย่างเกี่ยวกับการสอน ถามผมได้เลยเรื่อง:</p>
+                            <ul>
+                                <li>🎯 เทคนิคและกลยุทธ์การสอน</li>
+                                <li>📚 เนื้อหาวิชาและการอธิบายแนวคิด</li>
+                                <li>🏫 การจัดการชั้นเรียน</li>
+                                <li>📊 การวัดและประเมินผล</li>
+                                <li>🎮 กิจกรรมสร้างสรรค์</li>
+                                <li>💡 นวัตกรรมการศึกษา</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-wrap">
+                    <textarea id="chatInput" class="chat-input" placeholder="พิมพ์คำถามของคุณที่นี่... (Enter = ส่ง | Shift+Enter = ขึ้นบรรทัดใหม่)" rows="2"
+                        onkeydown="handleChatKey(event)"></textarea>
+                    <button class="chat-send" onclick="sendChat()" id="chatSendBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
